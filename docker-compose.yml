@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tatkal
+      POSTGRES_PASSWORD: tatkal
+      POSTGRES_DB: tatkal
+    command: ["postgres", "-c", "max_connections=200"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tatkal"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: .
+    environment: &env
+      DATABASE_URL: postgresql+asyncpg://tatkal:tatkal@postgres:5432/tatkal
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-admin-secret}
+      BCRYPT_ROUNDS: "8"            # faster registration for load tests
+      AUTO_CREATE_TABLES: "false"   # `app.cli seed` creates tables once before the workers start
+      RUN_BACKGROUND_WORKERS: "false"
+      WEB_CONCURRENCY: "4"
+      DB_POOL_SIZE: "15"
+      DB_MAX_OVERFLOW: "15"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command: ["python", "-m", "app.worker"]
+    environment:
+      <<: *env
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  pgdata:

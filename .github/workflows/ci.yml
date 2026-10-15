@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -v
+
+  rush:
+    # Full-stack smoke test: real Postgres + Redis, then a 300-user rush.
+    runs-on: ubuntu-latest
+    needs: test
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: tatkal, POSTGRES_PASSWORD: tatkal, POSTGRES_DB: tatkal }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U tatkal" --health-interval 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgresql+asyncpg://tatkal:tatkal@localhost:5432/tatkal
+      REDIS_URL: redis://localhost:6379/0
+      BCRYPT_ROUNDS: "4"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: |
+          uvicorn app.main:app --port 8000 &
+          for i in $(seq 1 30); do curl -sf localhost:8000/healthz && break; sleep 1; done
+          python loadtest/rush.py --mode both --users 300 --hot-seats 20 | tee rush.txt
+          python - <<'EOF'
+          import json, glob
+          safe = [r for r in json.load(open(sorted(glob.glob("loadtest/results/*.json"))[-1])) if r["mode"] == "safe"][0]
+          assert safe["double_booked_seats"] == 0, safe
+          assert safe["duplicate_charges"] == 0, safe
+          print("safe mode: 0 double bookings, 0 duplicate charges")
+          EOF

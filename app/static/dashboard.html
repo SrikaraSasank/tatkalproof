@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TatkalProof Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f12;
+    --panel: #15181d;
+    --panel-2: #1b1f26;
+    --line: #262b33;
+    --text: #e8e6e1;
+    --muted: #8a8f98;
+    --amber: #ffb000;
+    --green: #2fd17a;
+    --red: #ff4d4f;
+    --blue: #5aa9ff;
+    --seat-free: #222831;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    --sans: "Space Grotesk", system-ui, -apple-system, Segoe UI, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; justify-content: space-between;
+           border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand h1 { margin: 0; font-family: var(--mono); font-weight: 800; letter-spacing: .08em; font-size: 22px; color: var(--amber); }
+  .brand span { color: var(--muted); font-size: 13px; }
+  .live { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+  .dot.on { background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 1.4s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  select, input, button { font-family: var(--mono); font-size: 13px; color: var(--text); background: var(--panel-2);
+           border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--amber); }
+  button.on { border-color: var(--green); color: var(--green); }
+
+  .event-line { margin: 18px 0 6px; display: flex; flex-wrap: wrap; gap: 6px 20px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .event-line b { color: var(--text); font-weight: 600; }
+
+  .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 14px 0 18px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+  .kpi .label { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .kpi .value { font-family: var(--mono); font-size: 30px; font-weight: 800; margin-top: 6px; color: var(--amber); }
+  .kpi .sub { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+  .kpi.hero { border-color: var(--line); }
+  .kpi.hero.good { border-color: color-mix(in srgb, var(--green) 60%, transparent); }
+  .kpi.hero.good .value { color: var(--green); }
+  .kpi.hero.bad { border-color: var(--red); background: color-mix(in srgb, var(--red) 10%, var(--panel)); }
+  .kpi.hero.bad .value { color: var(--red); }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+  .panel h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 600; }
+
+  .coach { overflow-x: auto; }
+  .rows { display: grid; gap: 6px; min-width: max-content; }
+  .row { display: flex; align-items: center; gap: 6px; }
+  .row .rl { width: 18px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .seat { width: 40px; height: 34px; border-radius: 6px 6px 3px 3px; background: var(--seat-free); border: 1px solid #2c333d;
+          display: grid; place-items: center; font-family: var(--mono); font-size: 10px; color: var(--muted); position: relative;
+          transition: background .25s, transform .25s; }
+  .seat.HELD { background: color-mix(in srgb, var(--amber) 30%, var(--panel)); border-color: var(--amber); color: var(--amber); }
+  .seat.BOOKED { background: color-mix(in srgb, var(--green) 25%, var(--panel)); border-color: var(--green); color: var(--green); }
+  .seat.DOUBLE { background: var(--red); border-color: var(--red); color: #fff; font-weight: 800; transform: scale(1.06); animation: shake .5s; }
+  .seat .x { position: absolute; top: -8px; right: -8px; background: #fff; color: var(--red); border-radius: 9px; font-size: 10px; padding: 1px 5px; font-weight: 800; }
+  .aisle { width: 18px; }
+  @keyframes shake { 25% { transform: translateX(-2px) scale(1.06); } 75% { transform: translateX(2px) scale(1.06); } }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -2px; border: 1px solid #2c333d; }
+
+  canvas { width: 100%; height: 90px; display: block; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; font-family: var(--mono); font-size: 13px; }
+  .kv span:nth-child(odd) { color: var(--muted); }
+  .stack > * + * { margin-top: 16px; }
+  .controls { display: grid; gap: 8px; }
+  .controls .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  code { font-family: var(--mono); font-size: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+         padding: 10px; display: block; white-space: pre-wrap; word-break: break-all; color: var(--text); }
+  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--amber);
+           padding: 10px 14px; border-radius: 8px; font-family: var(--mono); font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+
+  @media (max-width: 1000px) {
+    .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi .value { font-size: 24px; }
+    .seat { width: 24px; height: 24px; font-size: 9px; }
+    .panel { padding: 12px; }
+    .row { gap: 4px; }
+    .row .rl, .aisle { width: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>TATKALPROOF</h1>
+      <span>live booking rush monitor</span>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <span class="live"><span class="dot" id="dot"></span><span id="clock">--:--:--</span></span>
+      <select id="eventSelect" aria-label="Event"></select>
+    </div>
+  </header>
+
+  <div class="event-line" id="eventLine"></div>
+
+  <section class="kpis">
+    <div class="kpi hero" id="kpiDouble">
+      <div class="label">Double-booked seats</div>
+      <div class="value" id="vDouble">0</div>
+      <div class="sub" id="vExtra">0 extra tickets sold</div>
+    </div>
+    <div class="kpi"><div class="label">Seats sold</div><div class="value" id="vBooked">0</div><div class="sub" id="vHeld">0 on hold</div></div>
+    <div class="kpi"><div class="label">Requests / sec</div><div class="value" id="vRps">0</div><div class="sub" id="vPeak">peak 0</div></div>
+    <div class="kpi"><div class="label">p95 latency</div><div class="value" id="vP95">-</div><div class="sub" id="vP50">p50 -</div></div>
+    <div class="kpi"><div class="label">Rejected (409)</div><div class="value" id="v409">0</div><div class="sub">seat already taken</div></div>
+    <div class="kpi"><div class="label">Throttled (429)</div><div class="value" id="v429">0</div><div class="sub">rate limited</div></div>
+  </section>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>Coach layout</h2>
+      <div class="coach"><div class="rows" id="seatMap"></div></div>
+      <div class="legend">
+        <span><i style="background:var(--seat-free)"></i>Available</span>
+        <span><i style="background:color-mix(in srgb,var(--amber) 30%,var(--panel));border-color:var(--amber)"></i>On hold</span>
+        <span><i style="background:color-mix(in srgb,var(--green) 25%,var(--panel));border-color:var(--green)"></i>Booked</span>
+        <span><i style="background:var(--red);border-color:var(--red)"></i>Sold more than once</span>
+      </div>
+    </section>
+
+    <aside class="stack">
+      <section class="panel">
+        <h2>Traffic, last 10 s</h2>
+        <canvas id="spark" width="600" height="180"></canvas>
+      </section>
+      <section class="panel">
+        <h2>Outcomes</h2>
+        <div class="kv" id="counters"></div>
+      </section>
+      <section class="panel">
+        <h2>Controls</h2>
+        <div class="controls">
+          <input id="adminToken" type="password" placeholder="Admin token (X-Admin-Token)" autocomplete="off">
+          <div class="two">
+            <button id="btnRate">Rate limit</button>
+            <button id="btnRoom">Waiting room</button>
+          </div>
+          <div class="two">
+            <button id="btnReset">Reset event</button>
+            <button id="btnNew">New event</button>
+          </div>
+          <p class="hint">Start a rush from a terminal:</p>
+          <code id="cmd">python loadtest/rush.py --mode both --users 2000</code>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+  let eventId = null, flags = {}, peak = 0, failures = 0;
+
+  $('adminToken').value = store.get('tp_admin') || '';
+  $('adminToken').addEventListener('change', (e) => store.set('tp_admin', e.target.value));
+
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  async function admin(method, path, body) {
+    const res = await fetch(path, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': $('adminToken').value },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || res.status);
+    return data;
+  }
+
+  async function loadEvents(selectId) {
+    const events = await (await fetch('/events')).json();
+    const sel = $('eventSelect');
+    sel.innerHTML = events.map(e => `<option value="${e.id}">#${e.id} ${escapeHtml(e.name)}</option>`).join('');
+    const saved = selectId || Number(store.get('tp_event'));
+    eventId = events.some(e => e.id === saved) ? saved : (events[0] && events[0].id);
+    if (eventId) sel.value = eventId;
+    if (!events.length) $('eventLine').textContent = 'No events yet. Enter the admin token and click "New event".';
+  }
+  $('eventSelect').addEventListener('change', (e) => { eventId = Number(e.target.value); store.set('tp_event', eventId); peak = 0; });
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  const fmt = (n) => n == null ? '-' : Number(n).toLocaleString('en-IN');
+
+  function renderSeats(event, seats) {
+    const perRow = event.seats_per_row;
+    const rows = [];
+    for (let i = 0; i < seats.length; i += perRow) rows.push(seats.slice(i, i + perRow));
+    const aisleAfter = Math.floor(perRow / 2);
+    $('seatMap').innerHTML = rows.map(row => {
+      const letter = row[0][1].replace(/\d+/g, '');
+      const cells = row.map(([id, label, status, count], idx) => {
+        const cls = count > 1 ? 'DOUBLE' : status;
+        const badge = count > 1 ? `<span class="x">x${count}</span>` : '';
+        const aisle = idx === aisleAfter - 1 ? '<div class="aisle"></div>' : '';
+        return `<div class="seat ${cls}" title="${label} - ${status}${count > 1 ? ', sold ' + count + ' times' : ''}">${label.replace(letter, '')}${badge}</div>${aisle}`;
+      }).join('');
+      return `<div class="row"><span class="rl">${letter}</span>${cells}</div>`;
+    }).join('');
+  }
+
+  function renderSpark(series) {
+    const c = $('spark'), ctx = c.getContext('2d');
+    const W = c.width, H = c.height, pad = 8;
+    ctx.clearRect(0, 0, W, H);
+    const max = Math.max(10, ...series);
+    const css = getComputedStyle(document.documentElement);
+    ctx.strokeStyle = css.getPropertyValue('--line'); ctx.lineWidth = 1;
+    for (let g = 1; g < 4; g++) { const y = pad + (H - 2 * pad) * g / 4; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    const bw = (W - pad * 2) / series.length;
+    series.forEach((v, i) => {
+      const h = (H - 2 * pad) * v / max;
+      ctx.fillStyle = i === series.length - 1 ? css.getPropertyValue('--amber') : 'rgba(255,176,0,.45)';
+      ctx.fillRect(pad + i * bw + 3, H - pad - h, bw - 6, h);
+    });
+    ctx.fillStyle = css.getPropertyValue('--muted'); ctx.font = '22px JetBrains Mono, monospace';
+    ctx.fillText(`max ${fmt(max)} req/s`, pad + 4, pad + 20);
+  }
+
+  function renderCounters(m) {
+    const c = m.counters || {}, s = m.status_codes || {};
+    const rows = [
+      ['holds granted', c.hold_ok], ['payments confirmed', c.pay_ok], ['hold conflicts (Redis)', c.hold_conflict],
+      ['hold conflicts (DB guard)', c.hold_conflict_db], ['naive bookings', c.naive_booked], ['naive rejected', c.naive_rejected],
+      ['rate limited', c.rate_limited], ['holds expired', c.holds_expired], ['refunds', c.pay_refunded],
+      ['2xx / 4xx / 5xx', `${sumCodes(s, '2')} / ${sumCodes(s, '4')} / ${sumCodes(s, '5')}`],
+    ];
+    $('counters').innerHTML = rows.map(([k, v]) => `<span>${k}</span><span>${typeof v === 'string' ? v : fmt(v || 0)}</span>`).join('');
+  }
+  const sumCodes = (s, p) => fmt(Object.entries(s).filter(([k]) => k.startsWith(p)).reduce((a, [, v]) => a + v, 0));
+
+  async function tick() {
+    $('clock').textContent = new Date().toLocaleTimeString('en-IN', { hour12: false });
+    if (!eventId) return;
+    try {
+      const res = await fetch(`/events/${eventId}/live`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(res.status);
+      const d = await res.json();
+      failures = 0; $('dot').classList.add('on');
+      const e = d.event, m = d.metrics;
+      $('eventLine').innerHTML = `<span><b>${escapeHtml(e.name)}</b></span><span>${escapeHtml(e.venue)}</span><span>Rs ${fmt(e.price)}</span><span>${e.total_seats} seats</span>`;
+      $('vDouble').textContent = fmt(d.double_booked_seats);
+      $('vExtra').textContent = `${fmt(d.extra_tickets_sold)} extra tickets sold`;
+      const hero = $('kpiDouble');
+      hero.classList.toggle('bad', d.double_booked_seats > 0);
+      hero.classList.toggle('good', d.double_booked_seats === 0 && d.seat_counts.BOOKED + d.seat_counts.HELD > 0);
+      $('vBooked').textContent = fmt(d.seat_counts.BOOKED);
+      $('vHeld').textContent = `${fmt(d.seat_counts.HELD)} on hold, ${fmt(d.seat_counts.AVAILABLE)} free`;
+      peak = Math.max(peak, ...m.rps_series);
+      $('vRps').textContent = fmt(m.rps); $('vPeak').textContent = `peak ${fmt(peak)}`;
+      $('vP95').textContent = m.latency_ms.p95 == null ? '-' : `${Math.round(m.latency_ms.p95)}ms`;
+      $('vP50').textContent = `p50 ${m.latency_ms.p50 == null ? '-' : Math.round(m.latency_ms.p50) + 'ms'} - p99 ${m.latency_ms.p99 == null ? '-' : Math.round(m.latency_ms.p99) + 'ms'}`;
+      $('v409').textContent = fmt(m.status_codes['409'] || 0);
+      $('v429').textContent = fmt(m.status_codes['429'] || 0);
+      renderSeats(e, d.seats); renderSpark(m.rps_series); renderCounters(m);
+      flags = d.flags;
+      $('btnRate').classList.toggle('on', flags.rate_limit_enabled);
+      $('btnRate').textContent = `Rate limit: ${flags.rate_limit_enabled ? 'ON' : 'OFF'}`;
+      $('btnRoom').classList.toggle('on', flags.waiting_room_enabled);
+      $('btnRoom').textContent = `Waiting room: ${flags.waiting_room_enabled ? 'ON' : 'OFF'}`;
+      $('cmd').textContent = `python loadtest/rush.py --event-id ${eventId} --mode both --users 2000`;
+    } catch (err) {
+      if (++failures > 2) $('dot').classList.remove('on');
+    }
+  }
+
+  $('btnRate').onclick = async () => {
+    try { await admin('PUT', '/admin/flags', { rate_limit_enabled: !flags.rate_limit_enabled }); toast('Rate limit toggled'); }
+    catch (e) { toast('Failed: ' + e.message); }
+  };
+  $('btnRoom').onclick = async () => {
+    try { await admin('PUT', '/admin/flags', { waiting_room_enabled: !flags.waiting_room_enabled }); toast('Waiting room toggled'); }
+    catch (e) { toast('Failed: ' + e.message); }
+  };
+  $('btnReset').onclick = async () => {
+    if (!eventId) return;
+    try { const r = await admin('POST', `/admin/events/${eventId}/reset`); peak = 0; toast(`Reset: ${r.bookings_deleted} bookings cleared`); }
+    catch (e) { toast('Failed: ' + e.message); }
+  };
+  $('btnNew').onclick = async () => {
+    try {
+      const ev = await admin('POST', '/admin/events', {
+        name: `Tatkal Rush ${new Date().toLocaleTimeString('en-IN', { hour12: false })}`, venue: 'Bengaluru -> New Delhi',
+        starts_at: new Date(Date.now() + 86400000).toISOString(), price: 1999, rows: 10, seats_per_row: 10,
+      });
+      await loadEvents(ev.id); store.set('tp_event', ev.id); toast(`Created event #${ev.id}`);
+    } catch (e) { toast('Failed: ' + e.message); }
+  };
+
+  loadEvents().then(tick);
+  setInterval(tick, 500);
+})();
+</script>
+</body>
+</html>
