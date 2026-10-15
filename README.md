@@ -15,6 +15,10 @@ It ships two versions of the same booking flow:
 
 Run the rush, watch the naive version oversell on the live dashboard, then watch the hardened version hold at **0 double bookings**.
 
+| Naive flow: seats sold more than once | Hardened flow: zero double bookings |
+|---|---|
+| ![Naive run](docs/dashboard-naive.png) | ![Safe run](docs/dashboard-safe.png) |
+
 ---
 
 ## Architecture
